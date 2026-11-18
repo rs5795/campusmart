@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CampusMart – Buy & sell on your campus</title><meta name="color-scheme" content="light">
+<style>
+:root{color-scheme:light;--bg:#f6f7fb;--c:#fff;--t:#1b1f2a;--m:#6b7280;--p:#4f46e5;--pd:#4338ca;--b:#e5e7eb;--g:#16a34a;--r:#dc2626}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--t)}
+a{color:var(--p);text-decoration:none}header{background:var(--c);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:5}
+.bar{max-width:1100px;margin:auto;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.logo{font-weight:800;font-size:20px;color:var(--p)}.sp{flex:1}nav{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+main{max-width:1100px;margin:auto;padding:16px}
+button,.btn{background:var(--p);color:#fff;border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;display:inline-block}
+button:hover,.btn:hover{background:var(--pd)}.ghost{background:#fff;color:var(--t);border:1px solid var(--b)}.ghost:hover{background:#f3f4f6}.danger{background:var(--r)}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--b);border-radius:8px;font:inherit;background:#fff;color:var(--t)}
+label{display:block;font-weight:600;margin:10px 0 4px}.card{background:var(--c);border:1px solid var(--b);border-radius:12px;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.item{background:var(--c);border:1px solid var(--b);border-radius:12px;overflow:hidden;color:inherit;display:block}.item:hover{box-shadow:0 4px 14px #0001}
+.img{aspect-ratio:4/3;background:#eef0f6 center/cover;display:flex;align-items:center;justify-content:center;color:var(--m);font-size:34px}
+.item .in{padding:10px 12px}.price{font-weight:800;font-size:18px}.muted{color:var(--m);font-size:13px}
+.filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;margin:12px 0}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}.chip{white-space:nowrap;border:1px solid var(--b);background:#fff;border-radius:99px;padding:5px 12px;cursor:pointer;color:var(--t)}.chip.on{background:var(--p);color:#fff;border-color:var(--p)}
+.two{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}.big{aspect-ratio:4/3;border-radius:12px;background:#eef0f6 center/cover;display:flex;align-items:center;justify-content:center;font-size:60px}
+.msg{padding:9px 14px;border-radius:8px;margin:10px 0}.err{background:#fee2e2;color:#991b1b}.okm{background:#dcfce7;color:#166534}
+.tag{display:inline-block;background:#eef2ff;color:var(--pd);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600}.sold{background:#fee2e2;color:#991b1b}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--b)}
+.hero{text-align:center;padding:40px 10px}.hero h1{font-size:clamp(26px,5vw,40px);margin:0 0 8px}
+@media(max-width:720px){.filters{grid-template-columns:1fr 1fr}.filters input:first-child{grid-column:1/-1}.two{grid-template-columns:1fr}}
+</style></head><body>
+<header><div class="bar"><a class="logo" href="#/">🎒 CampusMart</a><span id="uni" class="tag"></span><div class="sp"></div><nav id="nav"></nav></div></header>
+<main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),app=$('#app');let META,ME=null,tok=localStorage.tok||null;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
+async function api(p,o={}){const h={...(tok&&{Authorization:'Bearer '+tok})};let body=o.body;
+ if(body&&!(body instanceof FormData)){h['Content-Type']='application/json';body=JSON.stringify(body)}
+ const r=await fetch('/api'+p,{...o,body,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Something went wrong');return d}
+const uniId=()=>+localStorage.uni||ME?.university_id||0,uniName=id=>META.universities.find(u=>u.id==id)?.name;
+const img=l=>l.image?`style="background-image:url('${esc(l.image)}')"`:'';
+const msg=(t,k='err')=>`<div class="msg ${k}">${esc(t)}</div>`;
+function nav(){$('#uni').innerHTML=uniId()?`<a href="#/uni">${esc(uniName(uniId()))} ▾</a>`:'';
+ $('#nav').innerHTML=ME?`<a class="btn" href="#/sell">+ Sell</a><a href="#/mine">My listings</a><a href="#/inbox">Inbox</a><a href="#" id="lo">Log out</a>`:`<a href="#/login">Log in</a><a class="btn" href="#/register">Sign up</a>`;
+ const lo=$('#lo');if(lo)lo.onclick=e=>{e.preventDefault();tok=ME=null;delete localStorage.tok;location.hash='#/';nav()}}
+const R={};
+R.uni=()=>{app.innerHTML=`<div class="hero"><h1>Buy & sell on your campus</h1><p class="muted">Choose your university to see listings from students and staff near you.</p></div>
+<div class="card" style="max-width:420px;margin:auto"><label>Your university</label><select id="u">${META.universities.map(u=>`<option value="${u.id}" ${u.id==uniId()?'selected':''}>${esc(u.name)} – ${esc(u.city)}</option>`).join('')}</select><br><br><button id="go" style="width:100%">Continue</button></div>`;
+ $('#go').onclick=()=>{localStorage.uni=$('#u').value;nav();location.hash='#/'}};
+let F={q:'',category:'',min:'',max:'',sort:''};
+R.home=async()=>{if(!uniId())return location.hash='#/uni';
+ app.innerHTML=`<div class="filters"><input id="q" placeholder="Search books, cycles, laptops…" value="${esc(F.q)}"><input id="min" type="number" min="0" placeholder="Min ₹" value="${F.min}"><input id="max" type="number" min="0" placeholder="Max ₹" value="${F.max}">
+ <select id="sort"><option value="">Newest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><button id="s">Search</button></div>
+ <div class="chips">${['',...META.categories].map(c=>`<span class="chip ${F.category===c?'on':''}" data-c="${esc(c)}">${c||'All'}</span>`).join('')}</div><div id="res" class="grid" style="margin-top:12px"></div>`;
+ $('#sort').value=F.sort;const run=async()=>{F={q:$('#q').value,category:F.category,min:$('#min').value,max:$('#max').value,sort:$('#sort').value};
+  const qs=new URLSearchParams({uni:uniId(),...Object.fromEntries(Object.entries(F).filter(([,v])=>v))});
+  const ls=await api('/listings?'+qs);$('#res').innerHTML=ls.length?ls.map(card).join(''):'<p class="muted">No listings found. Be the first to sell something!</p>'};
+ $('#s').onclick=run;$('#q').onkeydown=e=>e.key==='Enter'&&run();$('#sort').onchange=run;
+ document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{F.category=c.dataset.c;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));run()});run()};
+const card=l=>`<a class="item" href="#/item/${l.id}"><div class="img" ${img(l)}>${l.image?'':'📦'}</div><div class="in"><div class="price">${inr(l.price)}</div><div>${esc(l.title)}</div><div class="muted">${esc(l.category)} · ${esc(l.condition)}</div></div></a>`;
+R.item=async id=>{const l=await api('/listings/'+id);const own=ME&&ME.id===l.seller_id;
+ app.innerHTML=`<a href="#/">← Back</a><div class="two" style="margin-top:10px"><div class="big" ${img(l)}>${l.image?'':'📦'}</div><div class="card">
+ <span class="tag">${esc(l.category)}</span> <span class="tag ${l.status==='sold'?'sold':''}">${l.status==='sold'?'Sold':esc(l.condition)}</span>
+ <h2 style="margin:8px 0">${esc(l.title)}</h2><div class="price" style="font-size:26px">${inr(l.price)}</div><p style="white-space:pre-wrap">${esc(l.description)||'<span class="muted">No description.</span>'}</p>
+ <div class="muted">Seller: ${esc(l.seller_name)} · ${esc(l.university)}<br>Posted ${esc(l.created)}</div><hr style="border:0;border-top:1px solid var(--b);margin:14px 0"><div id="act"></div></div></div>`;
+ const a=$('#act');if(own)a.innerHTML=`<a class="btn" href="#/sell/${l.id}">Edit listing</a>`;
+ else if(!ME)a.innerHTML=`<a class="btn" href="#/login">Log in to contact seller</a>`;
+ else a.innerHTML=`<label>Message to seller</label><textarea id="m" rows="3">Hi, is "${esc(l.title)}" still available?</textarea><br><br><button id="c">Contact seller</button><div id="o"></div>`;
+ if($('#c'))$('#c').onclick=async()=>{try{const r=await api(`/listings/${l.id}/contact`,{method:'POST',body:{message:$('#m').value}});
+  $('#o').innerHTML=msg('Message sent! Seller contact: '+r.seller.email+(r.seller.phone?' · '+r.seller.phone:''),'okm')}catch(e){$('#o').innerHTML=msg(e.message)}}};
+function authForm(reg){app.innerHTML=`<div class="card" style="max-width:420px;margin:20px auto"><h2 style="margin-top:0">${reg?'Create account':'Welcome back'}</h2><div id="e"></div><form id="f">
+ ${reg?`<label>Full name</label><input name="name" required><label>University</label><select name="university_id">${META.universities.map(u=>`<option value="${u.id}" ${u.id==uniId()?'selected':''}>${esc(u.name)}</option>`).join('')}</select><label>Phone (optional)</label><input name="phone" type="tel">`:''}
+ <label>Email</label><input name="email" type="email" required><label>Password${reg?' (min 8 characters)':''}</label><input name="password" type="password" required minlength="${reg?8:1}"><br><br><button style="width:100%">${reg?'Sign up':'Log in'}</button></form>
+ <p class="muted">${reg?'Have an account? <a href="#/login">Log in</a>':'New here? <a href="#/register">Sign up</a>'}</p></div>`;
+ $('#f').onsubmit=async e=>{e.preventDefault();try{const r=await api(reg?'/register':'/login',{method:'POST',body:Object.fromEntries(new FormData(e.target))});
+  tok=r.token;localStorage.tok=tok;ME=r.user;localStorage.uni=ME.university_id;nav();location.hash='#/'}catch(x){$('#e').innerHTML=msg(x.message)}}}
+R.login=()=>authForm(0);R.register=()=>authForm(1);
+R.sell=async id=>{if(!ME)return location.hash='#/login';const l=id?await api('/listings/'+id):{};
+ app.innerHTML=`<div class="card" style="max-width:560px;margin:auto"><h2 style="margin-top:0">${id?'Edit listing':'Sell an item'}</h2><div id="e"></div><form id="f">
+ <label>Title</label><input name="title" required value="${esc(l.title)}"><label>Description</label><textarea name="description" rows="4">${esc(l.description)}</textarea>
+ <label>Price (₹)</label><input name="price" type="number" min="0" required value="${l.price??''}"><label>Category</label><select name="category">${META.categories.map(c=>`<option ${c===l.category?'selected':''}>${c}</option>`).join('')}</select>
+ <label>Condition</label><select name="condition">${META.conditions.map(c=>`<option ${c===l.condition?'selected':''}>${c}</option>`).join('')}</select>
+ ${id?`<label>Status</label><select name="status"><option value="active">Available</option><option value="sold" ${l.status==='sold'?'selected':''}>Sold</option></select>`:''}
+ <label>Photo (JPG/PNG/WEBP, max 3 MB)</label><input type="file" name="image" accept="image/*"><br><button style="width:100%">${id?'Save changes':'Publish listing'}</button></form></div>`;
+ $('#f').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target);if(!fd.get('image').size)fd.delete('image');
+  try{const r=await api(id?'/listings/'+id:'/listings',{method:id?'PUT':'POST',body:fd});location.hash='#/item/'+(id||r.id)}catch(x){$('#e').innerHTML=msg(x.message)}}};
+R.mine=async()=>{if(!ME)return location.hash='#/login';const ls=await api('/my/listings');
+ app.innerHTML=`<h2>My listings</h2><div class="card">${ls.length?ls.map(l=>`<div class="row"><div><a href="#/item/${l.id}"><b>${esc(l.title)}</b></a><div class="muted">${inr(l.price)} · ${l.status}</div></div><div><a class="btn ghost" href="#/sell/${l.id}">Edit</a> <button class="danger" data-d="${l.id}">Delete</button></div></div>`).join(''):'<p class="muted">You have no listings yet.</p>'}</div>`;
+ document.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this listing permanently?')){await api('/listings/'+b.dataset.d,{method:'DELETE'});R.mine()}})};
+R.inbox=async()=>{if(!ME)return location.hash='#/login';const ms=await api('/my/messages');
+ app.innerHTML=`<h2>Buyer messages</h2><div class="card">${ms.length?ms.map(m=>`<div class="row" style="display:block"><b>${esc(m.sender)}</b> on <a href="#/item/${m.listing_id}">${esc(m.title)}</a><div>${esc(m.body)}</div><div class="muted">${esc(m.email)} ${esc(m.phone)} · ${esc(m.created)}</div></div>`).join(''):'<p class="muted">No messages yet.</p>'}</div>`};
+async function route(){const[,r,id]=(location.hash||'#/').slice(1).split('/');const k=r||'home';
+ try{await (R[k]||R.home)(id)}catch(e){app.innerHTML=msg(e.message)}scrollTo(0,0)}
+(async()=>{META=await api('/meta');if(tok)try{ME=await api('/me')}catch{tok=null;delete localStorage.tok}nav();route()})();
+addEventListener('hashchange',route);
+</script></body></html>

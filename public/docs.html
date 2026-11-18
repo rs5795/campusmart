@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CampusMart – SE Documentation</title><meta name="color-scheme" content="light">
+<style>:root{color-scheme:light}body{margin:0;font:15px/1.6 system-ui,sans-serif;background:#f6f7fb;color:#1b1f2a}header{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px;position:sticky;top:0}
+main{max-width:900px;margin:auto;padding:16px}section{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:16px}h2{margin-top:0;color:#4338ca}a{color:#4f46e5}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}td,th{border:1px solid #e5e7eb;padding:6px 10px;text-align:left;vertical-align:top}th{background:#eef2ff}.mermaid{overflow-x:auto;background:#fff}code{background:#f3f4f6;padding:1px 5px;border-radius:4px}</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:'neutral'})</script></head><body>
+<header><b>CampusMart – Software Engineering Documentation</b> · <a href="/">← Open the marketplace</a></header><main>
+<section><h2>Unit 1 · Introduction, process model & planning</h2>
+<p><b>Problem:</b> Students and staff sell used books, cycles, electronics and hostel items through scattered WhatsApp groups with no search, trust or history. CampusMart gives each university its own searchable marketplace.</p>
+<p><b>Process model:</b> Incremental model (4 increments) – chosen because core features (auth, listings) are well understood, while search and messaging can be added and tested incrementally.</p>
+<table><tr><th>Increment</th><th>Deliverable</th><th>Week</th></tr><tr><td>1</td><td>SRS, use cases, DB design, auth</td><td>1–2</td></tr><tr><td>2</td><td>Listings CRUD, image upload, details page</td><td>3–4</td></tr><tr><td>3</td><td>Search, filters, contact seller, inbox</td><td>5–6</td></tr><tr><td>4</td><td>Testing, QA, deployment, docs</td><td>7–8</td></tr></table>
+<p><b>Risks:</b> spam listings (mitigate: login required, validation), image abuse (type/size limits), data loss (DB backups), scope creep (payments excluded).</p></section>
+<section><h2>Unit 2 · Requirements (SRS)</h2><p><b>Stakeholders:</b> Buyer, Seller, Admin/Moderator, University.</p>
+<table><tr><th>ID</th><th>Functional requirement</th></tr><tr><td>FR1</td><td>User registers/logs in with email + password; university is chosen at registration</td></tr><tr><td>FR2</td><td>Seller creates, edits, marks sold, and deletes own listings only</td></tr><tr><td>FR3</td><td>Seller uploads a product image (JPG/PNG/WEBP/GIF, ≤3 MB)</td></tr><tr><td>FR4</td><td>Product details page shows price, condition, seller and university</td></tr><tr><td>FR5</td><td>Search by keyword; filter by category and price; sort</td></tr><tr><td>FR6</td><td>Logged-in buyer contacts seller; seller reads messages in inbox</td></tr><tr><td>FR7</td><td>Users only see listings of their selected university</td></tr></table>
+<table><tr><th>ID</th><th>Non-functional requirement</th></tr><tr><td>NFR1 Security</td><td>bcrypt password hashes, JWT sessions, parameterised SQL, XSS escaping, upload validation</td></tr><tr><td>NFR2 Usability</td><td>Responsive on mobile, tablet, desktop</td></tr><tr><td>NFR3 Performance</td><td>Listing search under 500 ms for 10k rows (indexed)</td></tr><tr><td>NFR4 Maintainability</td><td>Modular REST API, automated tests</td></tr></table>
+<p><b>Constraints:</b> no online payments; free hosting; Node.js 18+.</p></section>
+<section><h2>Unit 3 · Modelling & design</h2><h3>Use-case diagram</h3><pre class="mermaid">flowchart LR
+B([Buyer]) --> U1(Register / Login)
+B --> U2(Search & filter)
+B --> U3(View details)
+B --> U4(Contact seller)
+S([Seller]) --> U1
+S --> U5(Create / edit / delete listing)
+S --> U6(Upload image)
+S --> U7(Read inbox)</pre>
+<h3>Class diagram</h3><pre class="mermaid">classDiagram
+class University{+id +name +city}
+class User{+id +name +email +phone +register() +login()}
+class Listing{+id +title +price +category +condition +image +status +create() +update() +delete()}
+class Message{+id +body +created}
+University "1" --> "*" User
+University "1" --> "*" Listing
+User "1" --> "*" Listing : sells
+User "1" --> "*" Message : sends
+Listing "1" --> "*" Message</pre>
+<h3>Sequence diagram – contact seller</h3><pre class="mermaid">sequenceDiagram
+Buyer->>UI: Click Contact seller
+UI->>API: POST /listings/:id/contact (JWT)
+API->>API: Verify token, validate message
+API->>DB: INSERT message
+DB-->>API: ok
+API-->>UI: seller contact details
+UI-->>Buyer: Confirmation</pre>
+<h3>State diagram – listing</h3><pre class="mermaid">stateDiagram-v2
+[*] --> Active: create
+Active --> Active: edit
+Active --> Sold: mark sold
+Sold --> Active: relist
+Active --> [*]: delete
+Sold --> [*]: delete</pre>
+<h3>Architecture</h3><p>Three-tier client–server: <b>Presentation</b> (responsive HTML/CSS/JS single-page app) → <b>Application</b> (Express REST API: auth, validation, business rules) → <b>Data</b> (SQLite, relational schema with foreign keys and indexes). Justification: simple to deploy, clear separation of concerns, easy to swap SQLite for PostgreSQL.</p></section>
+<section><h2>Unit 4 · Testing, quality & maintenance</h2>
+<p>Run <code>npm test</code> – 14 automated API integration tests (in-memory DB):</p>
+<table><tr><th>ID</th><th>Test case</th><th>Expected</th></tr><tr><td>TC01–02</td><td>Invalid name / weak password</td><td>400</td></tr><tr><td>TC03–06</td><td>Register, duplicate email, bad login, login</td><td>200/409/401/200</td></tr><tr><td>TC07–08</td><td>Create listing without/with login</td><td>401/201</td></tr><tr><td>TC09–10</td><td>Search+filter; other university isolation</td><td>1 / 0 results</td></tr><tr><td>TC11</td><td>Non-owner deletes listing</td><td>403</td></tr><tr><td>TC12–13</td><td>Contact seller; seller inbox</td><td>200; 1 message</td></tr><tr><td>TC14</td><td>Owner deletes listing</td><td>200</td></tr></table>
+<p><b>Test levels:</b> unit (validation rules), integration (API + DB, automated), system (manual UI walkthrough on phone and desktop), acceptance (against FR1–FR7).</p>
+<p><b>Quality assurance:</b> reliability (validation, FK constraints), security (NFR1), usability (responsive, clear errors), code review checklist.</p>
+<p><b>Maintenance plan:</b> corrective (bug tracking in GitHub issues), adaptive (move to PostgreSQL/cloud image storage), perfective (wishlists, ratings, real-time chat), preventive (dependency audits, nightly DB backup). New categories are a one-line change in <code>server.js</code>.</p></section>
+</main></body></html>
